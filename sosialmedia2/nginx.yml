@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pesbuk
+  namespace: pesbuk-production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      name: pesbuk
+      metadata: pesbuk
+  template:
+    metadata:
+      labels:
+        name: pesbuk
+        metadata: pesbuk
+    spec:
+      containers:
+      - name: pesbuk
+        image: 000520624108.dkr.ecr.ap-southeast-1.amazonaws.com/pesbuk:latest
+        ports:
+        - containerPort: 80
+        env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysecret
+                  key: DB_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: mysecret
+                  key: DB_PASS
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: mysecret
+                  key: DB_HOST
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysecret
+                  key: DB_NAME
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pesbuk
+  namespace: pesbuk-production
+spec:
+  #type: LoadBalancer
+  ports:
+    - port: 80
+      #nodePort: 30080
+  selector:
+    name: pesbuk
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: pesbuk-ingress
+  namespace : pesbuk-production
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/issuer: "pesbuk-production"
+spec:
+  rules:
+  - host: pesbuk-production.miqbalnawawi.site
+    http:
+      paths:
+      #- path: /belajar
+      - backend:
+          serviceName: pesbuk
+          servicePort: 80
+  tls:
+  - hosts:
+    - pesbuk-production.miqbalnawawi.site
+    secretName: pesbuk-tls
