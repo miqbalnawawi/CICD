@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog-testing
+  namespace: testing-blog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: blog-testing
+      metadata: blog-testing
+  template:
+    metadata:
+      labels:
+        name: blog-testing
+        metadata: blog-testing
+    spec:
+      containers:
+      - name: blog-testing
+        image: 768876311475.dkr.ecr.ap-southeast-1.amazonaws.com/macross-blog:latest
+        ports:
+        - containerPort: 80
+        env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: secretblog
+                  key: DB_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: secretblog
+                  key: DB_PASS
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: secretblog
+                  key: DB_HOST  
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: secretblog
+                  key: DB_NAME  
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blog-testing
+  namespace: testing-blog
+spec:
+  #type: LoadBalancer
+  ports:
+    - port: 80
+      #nodePort: 30080
+  selector:
+    name: blog-testing
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: blog-tls-ingress
+  namespace: testing-blog
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/acme-challenge-type: "http01"	
+    cert-manager.io/cluster-issuer: "letsencrypt-blog-testing"
+spec:
+  tls:
+    - hosts:
+      - blog.ical.host
+      secretName: blog-testing-tls
+  rules:
+  - host: blog.ical.host
+    http:
+      paths:
+      - backend:
+          serviceName: blog-testing
+          servicePort: 80
+        path: /
